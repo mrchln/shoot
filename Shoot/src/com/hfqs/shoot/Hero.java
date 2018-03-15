@@ -29,7 +29,6 @@ public class Hero extends FlyingObject{
 	public void step() {
 		if (images.length>0) {
 			image = images[index++/10%images.length];
-			System.out.println(index++%images.length);
 		}
 		
 	}

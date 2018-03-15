@@ -6,6 +6,8 @@ import java.awt.Font;
 import java.awt.Image;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.sql.Time;
 import java.util.Arrays;
@@ -33,6 +35,8 @@ public class ShootGame extends JPanel{
 	public static BufferedImage hero1;
 	public static BufferedImage pause;
 	public static BufferedImage gameover;
+	//public static Music bgMusic;
+	public static SimpleAudioPlayer bgMusic;  
 	
 	private FlyingObject[] flyings = {};//敌机数组
 	private Bullet[] bullets = {};
@@ -55,6 +59,7 @@ public class ShootGame extends JPanel{
 		//初始化子弹
 //		bullets = new Bullet[1];
 //		bullets[0] =new Bullet(200, 350);
+		bgMusic.stop();
 	}
 	
 	//静态代码块
@@ -69,6 +74,7 @@ public class ShootGame extends JPanel{
 			hero1 = ImageIO.read(ShootGame.class.getResource("hero1.png"));
 			pause = ImageIO.read(ShootGame.class.getResource("pause.png"));
 			gameover = ImageIO.read(ShootGame.class.getResource("gameover.png"));
+			bgMusic = new SimpleAudioPlayer("bgMusic.wav");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -186,40 +192,37 @@ public class ShootGame extends JPanel{
 	 * @param bullet
 	 */
 	public void bang(Bullet bullet) {
-		int index = -1;//击中飞行物的索引
-		for (int i = 0; i < flyings.length; i++) {
-			FlyingObject obj = flyings[i];
-			if (obj.shootBy(bullet)) {
-				index = i;//记录被击中的飞行物的索引
-				break;
-			}
-		}
-		if (index!=-1) {
-			FlyingObject one = flyings[index];//记录被击中的飞行物
-			FlyingObject temp = flyings[index];//被击中的飞行物与最后一个飞行物交换
-			flyings[index] = flyings[flyings.length-1];
-			flyings[flyings.length-1] = temp;
-			//删除最后一个飞行物（即被击中的）
-			flyings = Arrays.copyOf(flyings, flyings.length-1);
-			
-			//检查one的类型  如果是敌人，就算分
-			if (one instanceof Enemy) {
-				Enemy e = (Enemy)one;
-				score += e.getScore();//加分
-			}
-			if (one instanceof Award) {
-				Award award = (Award)one;
-				int type = award.getType();//获取奖励类型
-				switch (type) {
+		int index=-1;
+    	for(int i=0;i<flyings.length;i++){
+    		FlyingObject obj=flyings[i];
+    		if(obj.shootBy(bullet)){
+    			index=i;
+    			break;
+    		}
+    	}
+    	if(index!=-1){//被撞上了
+    		FlyingObject one=flyings[index];
+    		if(one instanceof Enemy){//敌机
+    			Enemy e=(Enemy)one;
+    			score+=e.getScore();
+    		}
+    		if(one instanceof Award){//奖励
+    			Award a=(Award)one;
+    			int type=a.getType();
+    			switch (type) {
 				case Award.DOUBLE_FIRE:
-					hero.addDoubleFire();//设置双倍火力
+					hero.addDoubleFire();
 					break;
-				case Award.LIFT:
-					hero.addLife();//设置加命
-					break;	
+				case Award.LIFE:
+					hero.addLife();
+					break;
 				}
-			}
-		}
+    		}
+    		FlyingObject t=flyings[index];
+    		flyings[index]=flyings[flyings.length-1];
+    		flyings[flyings.length-1]=t;
+    		flyings=Arrays.copyOf(flyings, flyings.length-1);//缩容
+    	}
 	}
 	/**
 	 * 画分数
@@ -311,54 +314,69 @@ public class ShootGame extends JPanel{
 	 * 流程控制
 	 */
 	public void action() {
-		//鼠标监听时间
-		MouseAdapter l = new MouseAdapter() {
-			@Override
-			public void mouseMoved(MouseEvent e) {//鼠标移动
-				if (state==RUNNING) {//运行时移动英雄机
-					int x = e.getX();
-					int y = e.getY();
-					hero.moveTo(x, y);;
+		//鼠标操作事件
+		MouseAdapter l=new MouseAdapter() {
+			/** 鼠标移动事件*/
+			public void mouseMoved(MouseEvent e) {
+				if(state==RUNNING){
+				int x=e.getX();//获取鼠标的x坐标
+				int y=e.getY();//获取鼠标的y坐标
+				hero.moveTo(x, y);//英雄机随鼠标移动
 				}
 			}
-			@Override
-			public void mouseExited(MouseEvent e) {//鼠标退出
-				if (state!=GAME_OVER) {
-					state=PAUSE;//游戏未结束，则设置其为暂停
-				}
-			}
-			
-			@Override
-			public void mouseClicked(MouseEvent e) {//鼠标退出
-				switch (state) {
+			public void mouseClicked(MouseEvent e) {//鼠标点击事件
+				switch (state) {//判断当前状态
 				case START:
 					state=RUNNING;
+					try {
+						bgMusic = new SimpleAudioPlayer("bgMusic.wav");
+					} catch (Exception e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+					bgMusic.play();
 					break;
-				case GAME_OVER: //游戏结束清理现场
-					flyings = new FlyingObject[0];
-					bullets = new Bullet[0];
-					hero = new Hero();
-					score = 0;
-					state = START;
-					break;
+				case GAME_OVER:
+					flyings = new FlyingObject[0]; // 清空飞行物
+					bullets = new Bullet[0]; // 清空子弹
+					hero = new Hero(); // 重新创建英雄机
+					score = 0; // 清空成绩
+					state = START; // 状态设置为启动
+					bgMusic.stop();
+					bgMusic.close();
+				
+				}
+			}
+			public void mouseExited(MouseEvent e) {//鼠标移开事件
+				if(state==RUNNING){
+					state=PAUSE;
+					bgMusic.stop();
+				}
+			}
+			public void mouseEntered(MouseEvent e) {//移入事件
+				if(state==PAUSE){
+					state=RUNNING;
+					bgMusic.play();
 				}
 			}
 		};
-		this.addMouseListener(l);;
-		timer = new Timer();//主流程控制
-		timer.schedule(new TimerTask() {
-			
-			@Override
+		
+		this.addMouseListener(l);//处理鼠标一般操作
+		this.addMouseMotionListener(l);//处理鼠标滑动
+		timer=new Timer();//创建定时器对象
+		timer.schedule(new TimerTask(){
 			public void run() {
-				enterAction();//飞行物入场
-				stepAction();//走一步
-				shootAction();//射击
-				bangAction();//碰撞
-				outOfBoundsAction(); //删除越界飞行物
-				repaint();//重绘，调用paint()方法
-				
-			}
-		}, intervel,intervel);
+				if(state==RUNNING){
+				enterAction();//敌人入场
+				stepAction();//飞行物走一步
+				shootAction();//英雄机发子弹
+				bangAction();//子弹和敌人的碰撞
+				outOfBoundsAction();//删除出界对象
+				checkGameOverAction();//检查游戏结束  
+				}
+				repaint();
+			}}, intervel,intervel);//第一个intervel:程序启动到第一次干事的间隔
+									//第二个intervel:每次干事的间隔
 	}
 	
 	public static void main(String[] args) {
@@ -369,7 +387,16 @@ public class ShootGame extends JPanel{
 		frame.setAlwaysOnTop(true);;
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);//默认关闭操作
 		frame.setLocationRelativeTo(null);//设置窗体初始位置
+		frame.addWindowListener(new WindowAdapter() {  
+            @Override  
+            public void windowClosing(WindowEvent e) {  
+                // TODO Auto-generated method stub  
+                System.exit(0);  
+                bgMusic.close();
+            }  
+        });  
 		frame.setVisible(true);//尽快调用paint
+		//bgMusic.stop();
 		
 		game.action();//启动后执行
 	}

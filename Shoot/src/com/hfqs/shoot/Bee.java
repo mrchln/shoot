@@ -7,7 +7,7 @@ import java.util.Random;
  * @author hanfuqingshi
  *
  */
-public class Bee extends FlyingObject implements Enemy {
+public class Bee extends FlyingObject implements Award {
 	private int xSpeed = 1;//x坐标移动方向的速度
 	private int ySpeed = 1;//y坐标方向的移动速度
 	private int awardType;//奖励类型
@@ -16,9 +16,9 @@ public class Bee extends FlyingObject implements Enemy {
 		this.image = ShootGame.bee;
 		width = image.getWidth();
 		height = image.getHeight();
-		y-=height;
+		y=-this.height;
 		Random rand = new Random();
-		x = rand.nextInt(ShootGame.WIDTH-width);
+		x = rand.nextInt(ShootGame.WIDTH-this.width);
 //		x = 100;
 //		y = 200;
 		awardType = rand.nextInt(2);//返回一个大于0小于2的随机数
