@@ -45,4 +45,8 @@ public class Bee extends FlyingObject implements Enemy {
 		}
 		
 	}
+	@Override
+	public boolean outOfBounds() {//处理越界
+		return y>ShootGame.HEIGHT;
+	}
 }

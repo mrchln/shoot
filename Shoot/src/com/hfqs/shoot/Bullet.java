@@ -18,4 +18,9 @@ public class Bullet extends FlyingObject{
 		y-=speed;
 		
 	}
+	
+	@Override
+	public boolean outOfBounds() {//处理越界
+		return y<-height;
+	}
 }

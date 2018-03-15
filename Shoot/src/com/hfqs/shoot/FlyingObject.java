@@ -59,4 +59,13 @@ public abstract class FlyingObject {
 		int y = bullet.y;//子弹纵坐标
 		return this.x<x&&x<this.x+width&&this.y<y&&y<this.y+height;
 	}
+	
+	/**
+	 * 检查是否越界
+	 * @param width 边界宽
+	 * @param height 边界高
+	 * @return true 出界与否
+	 * 
+	 */
+	public abstract boolean outOfBounds();
 }

@@ -1,6 +1,8 @@
 package com.hfqs.shoot;
 
 import java.awt.Graphics;
+import java.awt.Color;
+import java.awt.Font;
 import java.awt.Image;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -18,6 +20,10 @@ import javax.swing.JPanel;
 public class ShootGame extends JPanel{
 	public static final int WIDTH = 400;//面板宽
 	public static final int HEIGHT = 645;//面板高
+	public static final int START = 0;
+	public static final int RUNNING = 1;
+	public static final int PAUSE = 2;
+	public static final int GAME_OVER = 3;
 	public static BufferedImage background;
 	public static BufferedImage start;
 	public static BufferedImage airplane;
@@ -34,6 +40,7 @@ public class ShootGame extends JPanel{
 	private Timer timer;//定时器
 	private int intervel = 1000/80;//时间间隔（毫秒）
 	private int score = 0;//得分
+	private int state;
 	
 	int flyEnteredIndex = 0;//飞行物进场计数
 	int shootIndex = 0;//射击次数
@@ -54,14 +61,14 @@ public class ShootGame extends JPanel{
 	static {
 		try {
 			background = ImageIO.read(ShootGame.class.getResource("background.png"));
-			//start = ImageIO.read(ShootGame.class.getResource("start.png"));
+			start = ImageIO.read(ShootGame.class.getResource("start.png"));
 			airplane = ImageIO.read(ShootGame.class.getResource("airplane.png"));
 			bee = ImageIO.read(ShootGame.class.getResource("bee.png"));
 			bullet = ImageIO.read(ShootGame.class.getResource("bullet.png"));
 			hero0 = ImageIO.read(ShootGame.class.getResource("hero0.png"));
 			hero1 = ImageIO.read(ShootGame.class.getResource("hero1.png"));
-			//pause = ImageIO.read(ShootGame.class.getResource("pause.png"));
-			//gameover = ImageIO.read(ShootGame.class.getResource("gameover.png"));
+			pause = ImageIO.read(ShootGame.class.getResource("pause.png"));
+			gameover = ImageIO.read(ShootGame.class.getResource("gameover.png"));
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -73,6 +80,8 @@ public class ShootGame extends JPanel{
 		paintHero(g);//画英雄机
 		paintBullets(g);//画子弹
 		paintFlyingObjects(g);//画飞行物
+		paintScore(g);//画分数
+		paintState(g);//画游戏状态
 	}
 	/**
 	 * 画英雄机
@@ -212,6 +221,91 @@ public class ShootGame extends JPanel{
 			}
 		}
 	}
+	/**
+	 * 画分数
+	 * @param g
+	 */
+	public void paintScore(Graphics g) {
+		int x =10;
+		int y = 25;
+		Font mf = new Font(Font.SANS_SERIF,Font.BOLD,14);
+		g.setColor(new Color(0x3A3B3B));//设置字体
+		g.setFont(mf);
+		g.drawString("SCORE:"+score, x, y);//画分数
+		y+=20;
+		g.drawString("LIFT:"+hero.getLife(), x, y);
+	}
+	
+	public void paintState(Graphics g) {
+		switch (state) {
+		case START:
+			g.drawImage(start, 0, 0, null);
+			break;
+		case PAUSE:
+			g.drawImage(pause, 0, 0, null);
+			break;
+		case GAME_OVER:
+			g.drawImage(gameover, 0, 0, null);
+			break;
+		}
+	}
+	
+	/**
+	 * 飞行物越界情况
+	 */
+	public void outOfBoundsAction() {
+		int index = 0;
+		//存储活着的飞行物
+		FlyingObject[] flyingLives = new FlyingObject[flyings.length];
+		for (int i = 0; i < flyings.length; i++) {
+			FlyingObject f = flyings[i];
+			if (!f.outOfBounds()) {
+				flyingLives[index++] = f;//不越界的留着
+			}
+		}
+		flyings = Arrays.copyOf(flyingLives, index);//将不越界的飞行物都留着
+		index = 0;//重置为0
+		Bullet[] bulletLives = new Bullet[bullets.length];
+		for (int i = 0; i < bullets.length; i++) {
+			Bullet b = bullets[i];
+			if (!b.outOfBounds()) {
+				bulletLives[index++] = b;
+			}
+		}
+		bullets = Arrays.copyOf(bulletLives, index);//将不越界的子弹都留着
+	}
+	
+	/**
+	 * 判断是否没有生命数
+	 * @return
+	 */
+	public boolean isGameOver() {
+		for (int i = 0; i < flyings.length; i++) {
+			int index = -1;
+			FlyingObject obj = flyings[i];
+			if (hero.hit(obj)) {//检测英雄机与飞行物是否碰撞
+				hero.substractLife();
+				hero.setDoubleFire(0);;
+				index = i;
+			}
+			if (index!=-1) {
+				FlyingObject t = flyings[index];
+				flyings[index] = flyings[flyings.length-1];
+				flyings[flyings.length-1] = t;
+				flyings = Arrays.copyOf(flyings, flyings.length-1);
+			}
+		}
+		return hero.getLife()<=0;
+	}
+	
+	/**
+	 * 检测游戏是否结束
+	 */
+	public void checkGameOverAction() {
+		if (isGameOver()) {
+			state = GAME_OVER;//改变状态
+		}
+	}
 
 	/**
 	 * 流程控制
@@ -221,9 +315,33 @@ public class ShootGame extends JPanel{
 		MouseAdapter l = new MouseAdapter() {
 			@Override
 			public void mouseMoved(MouseEvent e) {//鼠标移动
-				int x = e.getX();
-				int y = e.getY();
-				hero.moveTo(x, y);;
+				if (state==RUNNING) {//运行时移动英雄机
+					int x = e.getX();
+					int y = e.getY();
+					hero.moveTo(x, y);;
+				}
+			}
+			@Override
+			public void mouseExited(MouseEvent e) {//鼠标退出
+				if (state!=GAME_OVER) {
+					state=PAUSE;//游戏未结束，则设置其为暂停
+				}
+			}
+			
+			@Override
+			public void mouseClicked(MouseEvent e) {//鼠标退出
+				switch (state) {
+				case START:
+					state=RUNNING;
+					break;
+				case GAME_OVER: //游戏结束清理现场
+					flyings = new FlyingObject[0];
+					bullets = new Bullet[0];
+					hero = new Hero();
+					score = 0;
+					state = START;
+					break;
+				}
 			}
 		};
 		this.addMouseListener(l);;
@@ -235,7 +353,8 @@ public class ShootGame extends JPanel{
 				enterAction();//飞行物入场
 				stepAction();//走一步
 				shootAction();//射击
-				bangAction();
+				bangAction();//碰撞
+				outOfBoundsAction(); //删除越界飞行物
 				repaint();//重绘，调用paint()方法
 				
 			}

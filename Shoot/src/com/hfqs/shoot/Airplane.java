@@ -25,4 +25,9 @@ public class Airplane extends FlyingObject implements Enemy{
 		y+=speed;
 		
 	}
+	
+	@Override
+	public boolean outOfBounds() {//处理越界
+		return y>ShootGame.HEIGHT;
+	}
 }

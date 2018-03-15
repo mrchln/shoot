@@ -71,4 +71,30 @@ public class Hero extends FlyingObject{
 	public void addLife() {//增命
 		life++;
 	}
+	
+	public int getLife() {//获取命数
+		return life;
+	}
+	
+	@Override
+	public boolean outOfBounds() {//处理越界
+		return y>ShootGame.HEIGHT;
+	}
+	
+	public void substractLife() {//减命
+		life--;
+	}
+	
+	public void setDoubleFire(int doubelFire) {
+		this.doubleFire = doubelFire;
+	}
+	
+	public boolean hit(FlyingObject other) {
+		int x1 = other.x - this.width/2;
+		int x2 = other.x + other.width + this.width/2;
+		int y1 = other.y - this.height/2;
+		int y2 = other.y + other.height + this.height/2;
+		return this.x + this.width/2 > x1&&this.x+this.width/2<x2&&this.y+this.height/2>y1
+				&&this.y+this.width/2<y2;
+	}
 }
